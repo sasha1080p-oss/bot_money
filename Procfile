@@ -1,1 +1,1 @@
-worker: python cushion_bot.py
+web: python cushion_bot.py
