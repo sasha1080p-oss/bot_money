@@ -1,0 +1,917 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Подушка и хотелки</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<style>
+  :root{
+    --bg:#F2F2F7; --card:#FFFFFF; --text:#1C1C1E; --sub:#8A8A8E;
+    --blue:#007AFF; --green:#34C759; --orange:#FF9500; --sep:#E5E5EA; --track:#E9E9EE;
+    --fill1:#34C759; --fill2:#30B0C7; --wfill1:#FFB84D; --wfill2:#FF7A59;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --bg:#000000; --card:#1C1C1E; --text:#FFFFFF; --sub:#8E8E93;
+      --blue:#0A84FF; --green:#30D158; --orange:#FF9F0A; --sep:#38383A; --track:#2C2C2E;
+      --fill1:#30D158; --fill2:#63D2FF; --wfill1:#FFB84D; --wfill2:#FF7A59;
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#000000; --card:#1C1C1E; --text:#FFFFFF; --sub:#8E8E93;
+    --blue:#0A84FF; --green:#30D158; --orange:#FF9F0A; --sep:#38383A; --track:#2C2C2E;
+    --fill1:#30D158; --fill2:#63D2FF; --wfill1:#FFB84D; --wfill2:#FF7A59;
+  }
+
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+  html,body{height:100%;}
+  body{
+    margin:0; background:var(--bg); color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","SF Pro Display",Helvetica,Arial,sans-serif;
+    display:flex; justify-content:center; min-height:100%;
+    padding: max(14px, env(safe-area-inset-top,0px)) 0 max(14px, env(safe-area-inset-bottom,0px));
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{ width:100%; max-width:420px; padding:0 16px 30px; }
+
+  .title{ font-size:34px; font-weight:700; letter-spacing:-0.02em; padding:6px 4px 18px; }
+  .tabs{ display:flex; gap:8px; margin-bottom:16px; }
+  .tab{
+    flex:1; text-align:center; padding:10px 0; border-radius:12px; font-size:14.5px; font-weight:600;
+    background:var(--card); color:var(--sub); cursor:pointer; border:none;
+  }
+  .tab.active{ color:#fff; }
+  .tab.active.cushion{ background:linear-gradient(135deg,var(--fill1),var(--fill2)); }
+  .tab.active.want{ background:linear-gradient(135deg,var(--wfill1),var(--wfill2)); }
+
+  .tab.active.history{ background:linear-gradient(135deg,var(--blue),#5AC8FA); }
+  .card{ background:var(--card); border-radius:20px; padding:22px 20px; margin-bottom:18px; }
+  .hero{ text-align:center; }
+  .hero .label{ font-size:13px; color:var(--sub); font-weight:600; text-transform:uppercase; letter-spacing:0.03em; margin-bottom:6px; }
+  .hero .amount{ font-size:40px; font-weight:700; letter-spacing:-0.02em; margin-bottom:14px; }
+  .track{ height:10px; border-radius:5px; background:var(--track); overflow:hidden; margin-bottom:10px; }
+  .fill{ height:100%; border-radius:5px; transition:width .4s ease; }
+  .fill.cushion{ background:linear-gradient(90deg,var(--fill1),var(--fill2)); }
+  .fill.want{ background:linear-gradient(90deg,var(--wfill1),var(--wfill2)); }
+  .hero .meta{ display:flex; justify-content:space-between; font-size:13px; color:var(--sub); }
+
+  .section-label{ font-size:13px; color:var(--sub); font-weight:600; text-transform:uppercase; letter-spacing:0.03em; margin:22px 4px 8px; }
+
+  .row{ display:flex; align-items:center; justify-content:space-between; padding:13px 2px; gap:10px; }
+  .row + .row{ border-top:0.5px solid var(--sep); }
+  .row .rt{ font-size:16px; flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .row .rv{ font-size:16px; color:var(--sub); flex-shrink:0; }
+  .row .rv.done{ color:var(--green); font-weight:600; }
+  .row .rv.active{ color:var(--orange); font-weight:600; }
+  .row-actions{ display:flex; gap:4px; flex-shrink:0; }
+  .icon-btn{
+    width:30px; height:30px; border-radius:50%; border:none; background:var(--track);
+    color:var(--text); font-size:14px; cursor:pointer; display:flex; align-items:center; justify-content:center;
+  }
+  .icon-btn.del{ color:#FF3B30; }
+  .edit-row{ padding:12px 2px; }
+  .edit-row + .edit-row, .edit-row + .row, .row + .edit-row{ border-top:0.5px solid var(--sep); }
+
+  .seg{ display:flex; background:var(--track); border-radius:10px; padding:2px; margin-bottom:14px; }
+  .seg button{
+    flex:1; border:none; background:transparent; color:var(--text); padding:8px 0;
+    font-size:14px; font-weight:500; border-radius:8px; cursor:pointer;
+  }
+  .seg button.active{ background:var(--card); font-weight:600; box-shadow:0 1px 3px rgba(0,0,0,0.15); }
+
+  .field{
+    width:100%; background:var(--track); border:none; color:var(--text);
+    padding:14px 16px; border-radius:12px; font-size:17px; outline:none; margin-bottom:12px;
+  }
+  .field::placeholder{ color:var(--sub); }
+  .field2row{ display:flex; gap:10px; }
+  .field2row .field{ flex:1; }
+  .field.small{ width:100px; padding:10px 12px; margin-bottom:0; text-align:center; flex-shrink:0; }
+
+  .btn{
+    width:100%; background:var(--blue); border:none; color:#fff;
+    padding:14px 0; border-radius:14px; font-size:17px; font-weight:600; cursor:pointer; margin-bottom:8px;
+  }
+  .btn.secondary{ background:var(--track); color:var(--text); }
+  .btn:active{ opacity:0.75; }
+
+  .split{ display:flex; gap:10px; margin-top:16px; }
+  .split .box{ flex:1; background:var(--track); border-radius:14px; padding:12px; }
+  .split .k{ font-size:12px; color:var(--sub); margin-bottom:4px; }
+  .split .v{ font-size:16px; font-weight:700; }
+  .split .v.green{ color:var(--green); }
+  .split .v.orange{ color:var(--orange); }
+
+  .settings-row{ display:flex; align-items:center; justify-content:space-between; padding:13px 2px; }
+  .settings-row + .settings-row{ border-top:0.5px solid var(--sep); }
+  .settings-row input{
+    width:110px; text-align:right; background:transparent; border:none; color:var(--blue);
+    font-size:16px; font-weight:600; outline:none;
+  }
+  .value-btn{
+    background:transparent; border:none; color:var(--blue); font-size:16px; font-weight:600;
+    cursor:pointer; padding:0; display:flex; align-items:center; gap:4px;
+  }
+  .value-btn .chev{ font-size:12px; color:var(--sub); }
+  .currency-picker{ padding:2px 2px 14px; }
+  .currency-chips{ display:flex; flex-wrap:wrap; gap:8px; }
+  .currency-chip{
+    border:1px solid var(--sep); background:var(--track); color:var(--text);
+    padding:8px 14px; border-radius:999px; font-size:14px; font-weight:600; cursor:pointer;
+  }
+  .currency-chip.active{ background:var(--blue); border-color:var(--blue); color:#fff; }
+
+  .breakdown{ display:flex; height:10px; border-radius:5px; overflow:hidden; margin-bottom:18px; }
+  .breakdown div{ height:100%; }
+  .breakdown .b-cushion{ background:var(--green); }
+  .breakdown .b-want{ background:var(--orange); }
+  .breakdown .b-life{ background:var(--blue); }
+  .breakdown-legend{ display:flex; justify-content:space-between; font-size:12px; color:var(--sub); margin-bottom:22px; }
+  .breakdown-legend span b{ color:var(--text); }
+
+  .slider-block{ padding:12px 2px; }
+  .slider-block + .slider-block{ border-top:0.5px solid var(--sep); }
+  .slider-top{ display:flex; justify-content:space-between; align-items:baseline; margin-bottom:8px; }
+  .slider-top .st-label{ font-size:16px; }
+  .slider-top .st-value{ font-size:16px; font-weight:700; }
+  .slider-top .st-value.g{ color:var(--green); }
+  .slider-top .st-value.o{ color:var(--orange); }
+  .slider-top .st-value.b{ color:var(--blue); }
+  input[type=range]{
+    -webkit-appearance:none; appearance:none; width:100%; height:6px; border-radius:3px;
+    background:var(--track); outline:none; margin:0;
+  }
+  input[type=range]::-webkit-slider-thumb{
+    -webkit-appearance:none; width:26px; height:26px; border-radius:50%; background:#fff;
+    box-shadow:0 2px 6px rgba(0,0,0,0.25); border:none; cursor:pointer;
+  }
+  input[type=range]::-moz-range-thumb{
+    width:26px; height:26px; border-radius:50%; background:#fff;
+    box-shadow:0 2px 6px rgba(0,0,0,0.25); border:none; cursor:pointer;
+  }
+  .warn{ font-size:12.5px; color:var(--orange); padding:4px 2px 0; font-weight:600; }
+  .done-banner{
+    padding:13px 14px; border-radius:14px; font-size:13.5px; font-weight:600; line-height:1.4;
+    background:rgba(52,199,89,0.12); color:var(--green); border:1px solid rgba(52,199,89,0.3);
+  }
+
+  .hint{ font-size:12.5px; color:var(--sub); padding:0 6px; line-height:1.4; }
+  .hidden{ display:none; }
+</style>
+<style>
+  /* дополнения для Mini App */
+  .rule-text{ font-size:14.5px; line-height:1.5; color:var(--text); margin-top:14px; }
+  .rule-text p{ margin:0 0 10px; }
+  .rule-text ul{ margin:0 0 10px; padding-left:20px; }
+  .rule-text p:last-child{ margin-bottom:0; }
+  .notice{ text-align:center; color:var(--sub); font-size:15px; line-height:1.5; }
+  .notice b{ display:block; color:var(--text); font-size:17px; margin-bottom:6px; }
+  .btn:disabled{ opacity:0.5; cursor:default; }
+  .toast{
+    position:fixed; left:50%; bottom:calc(20px + env(safe-area-inset-bottom,0px)); transform:translate(-50%, 20px);
+    max-width:calc(100% - 32px); background:var(--text); color:var(--bg); padding:12px 16px; border-radius:14px;
+    font-size:14px; font-weight:600; opacity:0; pointer-events:none; transition:opacity .2s, transform .2s; z-index:10;
+  }
+  .toast.show{ opacity:1; transform:translate(-50%, 0); }
+  @media (prefers-reduced-motion: reduce){ .fill, .toast{ transition:none; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="title">Деньги</div>
+
+  <div class="card hidden" id="gate"></div>
+
+  <div id="app" class="hidden">
+  <div class="tabs">
+    <button class="tab active cushion" data-tab="cushion">🔒 Подушка</button>
+    <button class="tab want" data-tab="want">🎯 Хотелки</button>
+    <button class="tab history" data-tab="history">🕘 История</button>
+  </div>
+
+  <div class="card hero" id="hero"></div>
+
+  <div class="card">
+    <div class="seg" id="kindseg">
+      <button class="active" data-kind="regular">Обычный доход</button>
+      <button data-kind="bonus">Неожиданно 🎁</button>
+    </div>
+    <input class="field" id="amt" type="text" inputmode="decimal" placeholder="Сколько пришло">
+    <button class="btn" id="logbtn">Записать поступление</button>
+    <div class="split" id="split" style="display:none"></div>
+  </div>
+
+  <div id="cushionSection">
+    <div class="section-label">Этапы подушки</div>
+    <div class="card" id="stages"></div>
+    <div class="card">
+      <button class="btn secondary" id="stages-edit-toggle" style="margin-bottom:0;">✎ Изменить суммы этапов</button>
+      <div id="stages-edit-form" class="hidden" style="margin-top:14px;">
+        <div class="hint" style="padding:0 0 10px;">Суммы по возрастанию. Финальный этап «6 месяцев расходов» считается отдельно, из настройки ниже.</div>
+        <div id="stages-inputs"></div>
+        <div style="display:flex; gap:8px; margin-top:4px;">
+          <button class="btn secondary" style="margin-bottom:0;" id="stage-add-row">+ Ещё этап</button>
+          <button class="btn" style="margin-bottom:0;" id="stages-save">Сохранить</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <button class="btn secondary" id="withdraw-toggle" style="margin-bottom:0;">🔓 Снять на форс-мажор</button>
+      <div id="withdraw-form" class="hidden" style="margin-top:14px;">
+        <div class="hint" style="padding:0 0 12px;">Подушку стоит трогать только на потерю дохода, серьёзную непредвиденную трату или заранее оговорённую большую цель — не на «захотелось».</div>
+        <input class="field" id="withdraw-amt" type="text" inputmode="decimal" placeholder="Сколько снять">
+        <input class="field" id="withdraw-reason" type="text" maxlength="200" placeholder="Причина (необязательно)">
+        <div class="warn hidden" id="withdraw-warn"></div>
+        <div style="display:flex; gap:8px; margin-top:4px;">
+          <button class="btn" style="background:#FF3B30; margin-bottom:0;" id="withdraw-confirm">Подтвердить снятие</button>
+          <button class="btn secondary" style="margin-bottom:0;" id="withdraw-cancel">Отмена</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <button class="btn secondary" id="rule-toggle" style="margin-bottom:0;">📜 Когда можно трогать подушку</button>
+      <div id="rule-text" class="rule-text hidden">
+        <p>Подушку можно трогать только на:</p>
+        <ul>
+          <li>потерю работы или отсутствие дохода;</li>
+          <li>серьёзную непредвиденную трату;</li>
+          <li>заранее определённую большую цель.</li>
+        </ul>
+        <p>Из подушки в хотелки — никогда. Расхотел цель — удали её из очереди, деньги останутся в фонде хотелок и пойдут на следующую.</p>
+        <p>Фонд хотелок можно и нужно тратить, когда цель накоплена — это не провал.</p>
+      </div>
+    </div>
+  </div>
+
+  <div id="wantSection" class="hidden">
+    <div class="section-label">Очередь хотелок</div>
+    <div class="card" id="wants"></div>
+    <div class="card">
+      <div class="field2row">
+        <input class="field" id="want-name" type="text" maxlength="120" placeholder="Название, например iPhone 16">
+        <input class="field" id="want-price" type="text" inputmode="decimal" placeholder="Цена">
+      </div>
+      <button class="btn secondary" id="want-add">Добавить в очередь</button>
+      <button class="btn" id="want-buy">Купить текущую цель</button>
+      <div class="warn hidden" id="want-buy-warn"></div>
+    </div>
+  </div>
+
+  <div id="historySection" class="hidden">
+    <div class="section-label">Все поступления и снятия</div>
+    <div class="card" id="history"></div>
+  </div>
+
+  <div class="section-label">Как делится каждое поступление</div>
+  <div class="card">
+    <div class="breakdown" id="breakdown"></div>
+    <div class="breakdown-legend" id="breakdown-legend"></div>
+
+    <div class="slider-block">
+      <div class="slider-top"><span class="st-label">🔒 Подушка</span><span class="st-value g" id="rate-val">20%</span></div>
+      <input type="range" id="rate" min="0" max="70" step="1" value="20">
+    </div>
+    <div class="slider-block">
+      <div class="slider-top"><span class="st-label">🎯 Хотелки</span><span class="st-value o" id="wantrate-val">10%</span></div>
+      <input type="range" id="wantrate" min="0" max="70" step="1" value="10">
+    </div>
+    <div class="slider-block">
+      <div class="slider-top"><span class="st-label">💳 Жизнь</span><span class="st-value b" id="life-val">70%</span></div>
+      <div class="hint" style="padding:0;">считается автоматически — всё, что осталось</div>
+    </div>
+    <div class="slider-block">
+      <div class="slider-top"><span class="st-label">Для неожиданных денег в подушку</span><span class="st-value g" id="brate-val">50%</span></div>
+      <input type="range" id="brate" min="0" max="100" step="5" value="50">
+    </div>
+    <div class="settings-row" style="padding-top:16px;"><div>Месячные расходы</div><input id="expense" type="text" inputmode="decimal" placeholder="не задано"></div>
+    <div class="settings-row">
+      <div>Валюта</div>
+      <button class="value-btn" id="currency-toggle">AMD <span class="chev">▾</span></button>
+    </div>
+    <div class="currency-picker hidden" id="currency-picker">
+      <div class="currency-chips" id="currency-chips"></div>
+      <input class="field" id="currency-custom" placeholder="Свой вариант, например GEL" maxlength="8" style="margin-top:10px; margin-bottom:0;">
+    </div>
+    <div class="warn hidden" id="warn">Подушка + хотелки занимают всё — на жизнь ничего не остаётся</div>
+  </div>
+  <div class="hint">Из подушки в хотелки брать нельзя. Расхотел цель — деньги остаются в фонде хотелок и идут на следующую. Последний этап подушки, «6 месяцев расходов», появится после того как укажешь месячные расходы. Проценты можно менять в любой момент — например увеличить подушку, когда привыкнешь жить на оставшееся.</div>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+const tg = window.Telegram && window.Telegram.WebApp;
+
+// ---------- тема Telegram ----------
+function applyTheme(){
+  if(!tg) return;
+  document.documentElement.dataset.theme = tg.colorScheme === 'dark' ? 'dark' : 'light';
+  const bg = getComputedStyle(document.documentElement).getPropertyValue('--bg').trim();
+  try{ tg.setBackgroundColor(bg); tg.setHeaderColor(bg); }catch(e){}
+}
+if(tg){
+  tg.ready();
+  tg.expand();
+  try{ tg.disableVerticalSwipes(); }catch(e){}
+  applyTheme();
+  tg.onEvent('themeChanged', applyTheme);
+}
+function haptic(type){
+  try{ tg && tg.HapticFeedback.notificationOccurred(type); }catch(e){}
+}
+
+// ---------- состояние (приходит с сервера) ----------
+let saved = 0, wants = [], fundValue = 0, historyItems = [];
+let rate = 20, wantRate = 10, bonusRate = 50, expense = 0;
+let customStages = [100000, 500000, 1000000];
+let currency = 'AMD';
+
+let editingWantId = null;
+let deletingWantId = null;
+let kind = 'regular';
+let tab = 'cushion';
+
+const hero = document.getElementById('hero');
+const stagesEl = document.getElementById('stages');
+const wantsEl = document.getElementById('wants');
+const splitEl = document.getElementById('split');
+const toastEl = document.getElementById('toast');
+const wantBuyWarnEl = document.getElementById('want-buy-warn');
+
+function esc(s){
+  return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+function fmt(n){ return Math.round(n).toLocaleString('ru-RU') + ' ' + esc(currency); }
+function num(v){
+  let t = String(v).trim().replace(/[\s']/g, '');
+  // несколько разделителей («1.000.000») — это разряды, а не дробь
+  if((t.match(/[.,]/g) || []).length > 1) t = t.replace(/[.,]/g, '');
+  return Number(t.replace(',', '.'));
+}
+
+let toastTimer = null;
+function toast(msg){
+  toastEl.textContent = msg;
+  toastEl.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => toastEl.classList.remove('show'), 3200);
+}
+
+// ---------- сервер ----------
+async function api(method, path, body, keepalive){
+  let res;
+  try{
+    res = await fetch('/api' + path, {
+      method, keepalive: !!keepalive,
+      headers: {'Content-Type': 'application/json', 'X-Telegram-Init-Data': tg ? tg.initData : ''},
+      body: body === undefined ? undefined : JSON.stringify(body),
+    });
+  }catch(e){
+    throw new Error('Нет связи с сервером. Проверь интернет и попробуй ещё раз.');
+  }
+  let data = {};
+  try{ data = await res.json(); }catch(e){}
+  if(!res.ok){
+    const err = new Error(data.error || 'Сервер не ответил. Попробуй ещё раз через минуту.');
+    err.status = res.status;
+    throw err;
+  }
+  return data;
+}
+
+function applyState(s, keepSettings){
+  saved = s.saved;
+  wants = s.wants;
+  fundValue = s.wantFund;
+  historyItems = s.history;
+  if(!keepSettings){
+    rate = Math.round(s.config.rate);
+    wantRate = Math.round(s.config.wantRate);
+    bonusRate = Math.round(s.config.bonusRate);
+    expense = s.config.expense;
+    customStages = s.config.stages;
+    currency = s.config.currency;
+  }
+}
+
+// блокирует кнопку на время запроса, чтобы не записать поступление дважды
+async function withButton(btn, fn){
+  if(btn.disabled) return;
+  btn.disabled = true;
+  try{ await fn(); }
+  finally{ btn.disabled = false; }
+}
+
+// ---------- расчёты (как в боте) ----------
+function stages(){
+  const s = customStages.slice();
+  if(expense > 0){
+    const finalTarget = Math.round(expense*6);
+    if(s.length === 0 || finalTarget > s[s.length-1]) s.push(finalTarget);
+  }
+  return s;
+}
+function currentCushionStage(){
+  const s = stages();
+  for(let i=0;i<s.length;i++){ if(saved < s[i]) return {no:i+1, target:s[i], total:s.length}; }
+  return {no:s.length, target:s[s.length-1], total:s.length};
+}
+function wantFund(){ return Math.max(0, fundValue); }
+function activeWant(){ return wants.find(w => !w.purchased) || null; }
+
+// ---------- вкладки ----------
+function switchTab(t){
+  tab = t;
+  document.querySelectorAll('.tab').forEach(b => b.classList.toggle('active', b.dataset.tab === t));
+  document.getElementById('cushionSection').classList.toggle('hidden', t !== 'cushion');
+  document.getElementById('wantSection').classList.toggle('hidden', t !== 'want');
+  document.getElementById('historySection').classList.toggle('hidden', t !== 'history');
+  render();
+}
+document.querySelectorAll('.tab').forEach(b => b.onclick = () => switchTab(b.dataset.tab));
+
+function render(){
+  if(tab === 'cushion'){
+    const cs = currentCushionStage();
+    const pct = cs.target > 0 ? Math.max(0, Math.min(1, saved/cs.target)) : 0;
+    const allDone = cs.no === cs.total && saved >= cs.target;
+    hero.innerHTML = `
+      <div class="label">Подушка · этап ${cs.no} из ${cs.total}</div>
+      <div class="amount">${fmt(saved)}</div>
+      <div class="track"><div class="fill cushion" style="width:${pct*100}%"></div></div>
+      <div class="meta"><span>${(pct*100).toFixed(0)}%</span><span>цель ${fmt(cs.target)}</span></div>
+      ${expense > 0 ? `<div class="meta" style="margin-top:6px;"><span>покрывает ${(saved/expense).toFixed(1).replace('.', ',')} мес. расходов</span></div>` : ''}
+      ${allDone ? `<div class="done-banner" style="margin-top:16px; text-align:left;">🛡️ Подушка полностью сформирована! Хороший момент пересмотреть проценты — например снизить долю подушки и увеличить хотелки, в настройках ниже.</div>` : ''}
+    `;
+    stagesEl.innerHTML = '';
+    const stageArr = stages();
+    const expenseStageAppended = expense > 0 && stageArr.length > customStages.length;
+    let prevTarget = 0;
+    stageArr.forEach((target,i)=>{
+      const isLast = expenseStageAppended && i === stageArr.length-1;
+      const label = isLast ? `6 месяцев расходов (${fmt(target)})` : fmt(target);
+      const doneNow = saved >= target;
+      const isCurrent = !doneNow && saved >= prevTarget;
+      let rvText, rvCls;
+      if(doneNow){ rvText = '✓ готово'; rvCls = 'done'; }
+      else if(isCurrent){ rvText = `${Math.max(0, Math.min(100, Math.round((saved-prevTarget)/(target-prevTarget)*100)))}%`; rvCls = 'active'; }
+      else { rvText = 'впереди'; rvCls = ''; }
+      const row = document.createElement('div');
+      row.className = 'row';
+      row.innerHTML = `<div class="rt">${label}</div><div class="rv ${rvCls}">${rvText}</div>`;
+      stagesEl.appendChild(row);
+      prevTarget = target;
+    });
+  } else if(tab === 'want') {
+    const aw = activeWant();
+    const fund = wantFund();
+    const pct = aw ? Math.max(0, Math.min(1, fund/aw.price)) : 0;
+    hero.innerHTML = aw ? `
+      <div class="label">Фонд хотелок · сейчас копим на</div>
+      <div class="amount" style="font-size:26px;">${esc(aw.name)}</div>
+      <div class="track"><div class="fill want" style="width:${pct*100}%"></div></div>
+      <div class="meta"><span>${fmt(fund)}</span><span>цель ${fmt(aw.price)}</span></div>
+    ` : `
+      <div class="label">Фонд хотелок</div>
+      <div class="amount">${fmt(fund)}</div>
+      <div class="meta"><span>Очередь пуста — добавь цель ниже</span></div>
+    `;
+    document.getElementById('want-buy').classList.toggle('hidden', !aw);
+    if(!aw) wantBuyWarnEl.classList.add('hidden');
+    wantsEl.innerHTML = '';
+    if(wants.length === 0){
+      wantsEl.innerHTML = '<div class="hint" style="padding:13px 2px;">Пока пусто — добавь первую цель ниже</div>';
+    }
+    wants.forEach(w => {
+      if(editingWantId === w.id){
+        const wrap = document.createElement('div');
+        wrap.className = 'edit-row';
+        wrap.innerHTML = `
+          <div class="field2row">
+            <input class="field" data-edit-name type="text" maxlength="120" value="${esc(w.name)}">
+            <input class="field" data-edit-price type="text" inputmode="decimal" value="${w.price}">
+          </div>
+          <div style="display:flex; gap:8px;">
+            <button class="btn" style="margin-bottom:0;" data-edit-save>Сохранить</button>
+            <button class="btn secondary" style="margin-bottom:0;" data-edit-cancel>Отмена</button>
+          </div>
+        `;
+        wantsEl.appendChild(wrap);
+        const saveBtn = wrap.querySelector('[data-edit-save]');
+        saveBtn.onclick = () => withButton(saveBtn, async () => {
+          const name = wrap.querySelector('[data-edit-name]').value.trim();
+          const price = num(wrap.querySelector('[data-edit-price]').value);
+          try{
+            const d = await api('PATCH', `/wants/${w.id}`, {name, price});
+            applyState(d.state, true);
+            editingWantId = null;
+            render();
+          }catch(e){ toast(e.message); }
+        });
+        wrap.querySelector('[data-edit-cancel]').onclick = () => { editingWantId = null; render(); };
+        return;
+      }
+      if(deletingWantId === w.id){
+        const wrap = document.createElement('div');
+        wrap.className = 'edit-row';
+        wrap.innerHTML = `
+          <div class="hint" style="padding:0 0 10px;">Удалить «${esc(w.name)}» из очереди? Деньги останутся в фонде хотелок и перейдут на следующую цель.</div>
+          <div style="display:flex; gap:8px;">
+            <button class="btn" style="background:#FF3B30; margin-bottom:0;" data-del-confirm>Удалить</button>
+            <button class="btn secondary" style="margin-bottom:0;" data-del-cancel>Отмена</button>
+          </div>
+        `;
+        wantsEl.appendChild(wrap);
+        const delBtn = wrap.querySelector('[data-del-confirm]');
+        delBtn.onclick = () => withButton(delBtn, async () => {
+          try{
+            const d = await api('DELETE', `/wants/${w.id}`);
+            applyState(d.state, true);
+            deletingWantId = null;
+            render();
+          }catch(e){ toast(e.message); }
+        });
+        wrap.querySelector('[data-del-cancel]').onclick = () => { deletingWantId = null; render(); };
+        return;
+      }
+      const isActive = aw && w.id === aw.id;
+      const row = document.createElement('div');
+      row.className = 'row';
+      const statusCls = w.purchased ? 'done' : (isActive ? 'active' : '');
+      const statusText = w.purchased ? '✓ куплено' : (isActive ? 'в процессе' : 'в очереди');
+      // купленные пункты — уже история: менять/удалять нельзя
+      const actionsHtml = w.purchased ? '' : `
+        <div class="row-actions">
+          <button class="icon-btn" title="Изменить" aria-label="Изменить">✎</button>
+          <button class="icon-btn del" title="Удалить" aria-label="Удалить">✕</button>
+        </div>`;
+      row.innerHTML = `
+        <div class="rt">${esc(w.name)} — ${fmt(w.price)}</div>
+        <div class="rv ${statusCls}">${statusText}</div>
+        ${actionsHtml}
+      `;
+      if(!w.purchased){
+        const [editBtn, delBtn] = row.querySelectorAll('.icon-btn');
+        editBtn.onclick = () => { editingWantId = w.id; deletingWantId = null; render(); };
+        delBtn.onclick = () => { deletingWantId = w.id; editingWantId = null; render(); };
+      }
+      wantsEl.appendChild(row);
+    });
+  } else {
+    const historyEl = document.getElementById('history');
+    const incomeTotal = historyItems.filter(h => h.kind !== 'withdraw').reduce((a,h) => a + h.amount, 0);
+    hero.innerHTML = `
+      <div class="label">Всего записей</div>
+      <div class="amount" style="font-size:32px;">${historyItems.length}</div>
+      <div class="meta"><span>суммарно пришло ${fmt(incomeTotal)}</span></div>
+    `;
+    if(historyItems.length === 0){
+      historyEl.innerHTML = '<div class="hint" style="padding:13px 2px;">Пока нет ни одного поступления — запиши первое выше</div>';
+    } else {
+      historyEl.innerHTML = '';
+      historyItems.forEach(h => {
+        const d = new Date(h.date);
+        const dateStr = isNaN(d) ? '' : d.toLocaleDateString('ru-RU', {day:'2-digit', month:'2-digit'}) + ' · ' +
+          d.toLocaleTimeString('ru-RU', {hour:'2-digit', minute:'2-digit'});
+        const row = document.createElement('div');
+        row.className = 'row';
+        if(h.kind === 'withdraw'){
+          row.innerHTML = `
+            <div class="rt">🔓 −${fmt(-h.amount)}${h.reason ? ' · ' + esc(h.reason) : ''} <span style="color:var(--sub); font-weight:400;">· ${dateStr}</span></div>
+            <div class="rv" style="font-size:13px; color:#FF3B30;">снятие</div>
+          `;
+        } else {
+          row.innerHTML = `
+            <div class="rt">${fmt(h.amount)}${h.kind === 'bonus' ? ' 🎁' : ''} <span style="color:var(--sub); font-weight:400;">· ${dateStr}</span></div>
+            <div class="rv" style="font-size:13px; text-align:right;">🔒${fmt(h.toCushion)} 🎯${fmt(h.toWant)}</div>
+          `;
+        }
+        historyEl.appendChild(row);
+      });
+    }
+  }
+}
+
+// ---------- поступление ----------
+document.querySelectorAll('#kindseg button').forEach(b => {
+  b.onclick = () => {
+    document.querySelectorAll('#kindseg button').forEach(x => x.classList.remove('active'));
+    b.classList.add('active');
+    kind = b.dataset.kind;
+  };
+});
+
+const logBtn = document.getElementById('logbtn');
+logBtn.onclick = () => withButton(logBtn, async () => {
+  const inp = document.getElementById('amt');
+  const amount = num(inp.value);
+  if(isNaN(amount) || amount <= 0){ toast('Введи сумму больше нуля, например 150000'); return; }
+  try{
+    await flushSettings();
+    const d = await api('POST', '/income', {amount, kind});
+    applyState(d.state, true);
+    wantBuyWarnEl.classList.add('hidden');
+    const s = d.split;
+    inp.value = '';
+    inp.blur();
+    splitEl.style.display = 'flex';
+    splitEl.innerHTML = `
+      <div class="box"><div class="k">🔒 Подушка (${Math.round(s.cRate)}%)</div><div class="v green">${fmt(s.toCushion)}</div></div>
+      <div class="box"><div class="k">🎯 Хотелки (${Math.round(s.wantRate)}%)</div><div class="v orange">${fmt(s.toWant)}</div></div>
+      <div class="box"><div class="k">💳 Жизнь</div><div class="v">${fmt(s.toSpend)}</div></div>
+    `;
+    haptic('success');
+    render();
+  }catch(e){ haptic('error'); toast(e.message); }
+});
+
+// ---------- хотелки ----------
+const wantAddBtn = document.getElementById('want-add');
+wantAddBtn.onclick = () => withButton(wantAddBtn, async () => {
+  const nameEl = document.getElementById('want-name');
+  const priceEl = document.getElementById('want-price');
+  const name = nameEl.value.trim();
+  const price = num(priceEl.value);
+  if(!name){ toast('Напиши название цели'); return; }
+  if(isNaN(price) || price <= 0){ toast('Цена должна быть больше нуля'); return; }
+  try{
+    const d = await api('POST', '/wants', {name, price});
+    applyState(d.state, true);
+    nameEl.value = '';
+    priceEl.value = '';
+    haptic('success');
+    render();
+  }catch(e){ toast(e.message); }
+});
+
+const wantBuyBtn = document.getElementById('want-buy');
+const wantBuyWarn = document.getElementById('want-buy-warn');
+wantBuyBtn.onclick = () => withButton(wantBuyBtn, async () => {
+  try{
+    const d = await api('POST', '/wants/buy');
+    applyState(d.state, true);
+    wantBuyWarn.classList.add('hidden');
+    haptic('success');
+    toast(`🎉 Куплено: «${d.bought}»`);
+    render();
+  }catch(e){
+    wantBuyWarn.textContent = e.message;
+    wantBuyWarn.classList.remove('hidden');
+    haptic('warning');
+  }
+});
+
+// ---------- этапы подушки ----------
+const stagesToggle = document.getElementById('stages-edit-toggle');
+const stagesForm = document.getElementById('stages-edit-form');
+const stagesInputs = document.getElementById('stages-inputs');
+
+function renderStagesInputs(values){
+  stagesInputs.innerHTML = '';
+  values.forEach((v, i) => {
+    const row = document.createElement('div');
+    row.style.display = 'flex';
+    row.style.gap = '8px';
+    row.innerHTML = `
+      <input class="field" style="flex:1;" data-stage-input inputmode="decimal" value="${v}">
+      <button class="icon-btn del" style="align-self:center; margin-bottom:12px;" data-stage-del aria-label="Удалить этап">✕</button>
+    `;
+    row.querySelector('[data-stage-del]').onclick = () => {
+      const vals = collectStageInputs();
+      vals.splice(i, 1);
+      renderStagesInputs(vals.length ? vals : [100000]);
+    };
+    stagesInputs.appendChild(row);
+  });
+}
+function collectStageInputs(){
+  return Array.from(stagesInputs.querySelectorAll('[data-stage-input]'))
+    .map(inp => num(inp.value))
+    .filter(v => !isNaN(v) && v > 0);
+}
+stagesToggle.onclick = () => {
+  stagesForm.classList.toggle('hidden');
+  if(!stagesForm.classList.contains('hidden')) renderStagesInputs(customStages);
+};
+document.getElementById('stage-add-row').onclick = () => {
+  const vals = collectStageInputs();
+  const last = vals.length ? vals[vals.length - 1] : 0;
+  vals.push(last + 100000);
+  renderStagesInputs(vals);
+};
+const stagesSaveBtn = document.getElementById('stages-save');
+stagesSaveBtn.onclick = () => withButton(stagesSaveBtn, async () => {
+  let vals = collectStageInputs().sort((a, b) => a - b);
+  if(vals.length === 0) vals = [100000];
+  try{
+    const d = await api('POST', '/settings', {stages: vals});
+    customStages = d.state.config.stages;
+    applyState(d.state, true);
+    stagesForm.classList.add('hidden');
+    render();
+  }catch(e){ toast(e.message); }
+});
+
+// ---------- снятие ----------
+const withdrawToggle = document.getElementById('withdraw-toggle');
+const withdrawForm = document.getElementById('withdraw-form');
+const withdrawWarn = document.getElementById('withdraw-warn');
+function closeWithdraw(){
+  withdrawForm.classList.add('hidden');
+  document.getElementById('withdraw-amt').value = '';
+  document.getElementById('withdraw-reason').value = '';
+  withdrawWarn.classList.add('hidden');
+}
+withdrawToggle.onclick = () => {
+  withdrawForm.classList.toggle('hidden');
+  withdrawWarn.classList.add('hidden');
+};
+document.getElementById('withdraw-cancel').onclick = closeWithdraw;
+const withdrawBtn = document.getElementById('withdraw-confirm');
+withdrawBtn.onclick = () => withButton(withdrawBtn, async () => {
+  const amount = num(document.getElementById('withdraw-amt').value);
+  const reason = document.getElementById('withdraw-reason').value.trim();
+  if(isNaN(amount) || amount <= 0){
+    withdrawWarn.textContent = 'Введи сумму больше нуля';
+    withdrawWarn.classList.remove('hidden');
+    return;
+  }
+  if(amount > saved){
+    withdrawWarn.textContent = `В подушке только ${Math.round(saved).toLocaleString('ru-RU')} ${currency} — столько снять не получится`;
+    withdrawWarn.classList.remove('hidden');
+    return;
+  }
+  try{
+    const d = await api('POST', '/withdraw', {amount, reason});
+    applyState(d.state, true);
+    closeWithdraw();
+    toast('Снято. Восстанови подушку, когда сможешь — это не провал.');
+    render();
+  }catch(e){
+    withdrawWarn.textContent = e.message;
+    withdrawWarn.classList.remove('hidden');
+  }
+});
+
+document.getElementById('rule-toggle').onclick = () =>
+  document.getElementById('rule-text').classList.toggle('hidden');
+
+// ---------- настройки ----------
+const rateEl = document.getElementById('rate');
+const wantrateEl = document.getElementById('wantrate');
+const brateEl = document.getElementById('brate');
+const expenseEl = document.getElementById('expense');
+const breakdownEl = document.getElementById('breakdown');
+const legendEl = document.getElementById('breakdown-legend');
+const warnEl = document.getElementById('warn');
+
+// изменения ползунков копятся и уходят на сервер одним запросом после паузы
+let pendingSettings = {};
+let pendingTimer = null;
+function queueSettings(patch, delay){
+  Object.assign(pendingSettings, patch);
+  clearTimeout(pendingTimer);
+  pendingTimer = setTimeout(flushSettings, delay === undefined ? 500 : delay);
+}
+let settingsChain = Promise.resolve();
+function flushSettings(){
+  clearTimeout(pendingTimer);
+  const patch = pendingSettings;
+  pendingSettings = {};
+  if(Object.keys(patch).length > 0){
+    settingsChain = settingsChain.then(async () => {
+      try{
+        const d = await api('POST', '/settings', patch, true);
+        applyState(d.state, true);
+      }catch(e){
+        toast(e.message);
+        try{ await reload(); }catch(e2){}
+      }
+    });
+  }
+  return settingsChain;
+}
+document.addEventListener('visibilitychange', () => { if(document.hidden) flushSettings(); });
+
+function paintSlider(input, colorVar){
+  const min = +input.min, max = +input.max, val = +input.value;
+  const pct = max > min ? (val - min) / (max - min) * 100 : 0;
+  input.style.background = `linear-gradient(to right, var(${colorVar}) ${pct}%, var(--track) ${pct}%)`;
+}
+
+function renderSettings(){
+  // границы ползунков считаются от соседнего ползунка,
+  // так что подушка + хотелки не может уйти выше 100%
+  rateEl.max = Math.min(Math.max(70, rate), 100 - wantRate);
+  wantrateEl.max = Math.min(Math.max(70, wantRate), 100 - rate);
+  rateEl.value = rate; wantrateEl.value = wantRate; brateEl.value = bonusRate;
+
+  const life = Math.max(0, 100 - rate - wantRate);
+  document.getElementById('rate-val').textContent = rate + '%';
+  document.getElementById('wantrate-val').textContent = wantRate + '%';
+  document.getElementById('life-val').textContent = life + '%';
+  document.getElementById('brate-val').textContent = bonusRate + '%';
+
+  paintSlider(rateEl, '--green');
+  paintSlider(wantrateEl, '--orange');
+  paintSlider(brateEl, '--green');
+
+  breakdownEl.innerHTML = `
+    <div class="b-cushion" style="width:${rate}%"></div>
+    <div class="b-want" style="width:${wantRate}%"></div>
+    <div class="b-life" style="width:${life}%"></div>
+  `;
+  legendEl.innerHTML = `
+    <span>🔒 <b>${rate}%</b></span>
+    <span>🎯 <b>${wantRate}%</b></span>
+    <span>💳 <b>${life}%</b></span>
+  `;
+  warnEl.classList.toggle('hidden', life > 0);
+}
+
+rateEl.addEventListener('input', () => { rate = +rateEl.value; renderSettings(); queueSettings({rate}); });
+wantrateEl.addEventListener('input', () => { wantRate = +wantrateEl.value; renderSettings(); queueSettings({wantRate}); });
+brateEl.addEventListener('input', () => { bonusRate = +brateEl.value; renderSettings(); queueSettings({bonusRate}); });
+expenseEl.addEventListener('input', e => {
+  const v = num(e.target.value);
+  expense = isNaN(v) || v < 0 ? 0 : v;
+  queueSettings({expense}, 800);
+  render();
+});
+
+const currencyToggle = document.getElementById('currency-toggle');
+const currencyPicker = document.getElementById('currency-picker');
+const currencyChips = document.getElementById('currency-chips');
+const currencyCustom = document.getElementById('currency-custom');
+const CURRENCY_OPTIONS = ['AMD', 'USD', 'EUR', 'RUB', 'GEL', '$', '€', '֏'];
+
+function renderCurrencyPicker(){
+  currencyToggle.innerHTML = `${esc(currency)} <span class="chev">▾</span>`;
+  currencyChips.innerHTML = '';
+  CURRENCY_OPTIONS.forEach(opt => {
+    const b = document.createElement('button');
+    b.className = 'currency-chip' + (opt === currency ? ' active' : '');
+    b.textContent = opt;
+    b.onclick = () => {
+      currency = opt;
+      currencyCustom.value = '';
+      queueSettings({currency}, 0);
+      renderCurrencyPicker();
+      render();
+    };
+    currencyChips.appendChild(b);
+  });
+}
+currencyToggle.onclick = () => { currencyPicker.classList.toggle('hidden'); };
+currencyCustom.addEventListener('input', e => {
+  const v = e.target.value.trim();
+  if(!v) return;
+  currency = v.slice(0, 8);
+  queueSettings({currency}, 800);
+  renderCurrencyPicker();
+  render();
+});
+
+function renderAll(){
+  expenseEl.value = expense > 0 ? expense : '';
+  renderCurrencyPicker();
+  renderSettings();
+  render();
+}
+
+// ---------- запуск ----------
+const gate = document.getElementById('gate');
+const appEl = document.getElementById('app');
+function showGate(title, text){
+  gate.innerHTML = `<div class="notice"><b>${esc(title)}</b>${esc(text)}</div>`;
+  gate.classList.remove('hidden');
+  appEl.classList.add('hidden');
+}
+
+async function reload(){
+  const d = await api('GET', '/state');
+  applyState(d.state, false);
+  renderAll();
+}
+
+(async function boot(){
+  if(!tg || !tg.initData){
+    showGate('Открой через Telegram', 'Это приложение работает внутри бота: нажми «Деньги» в чате с ботом.');
+    return;
+  }
+  showGate('Загружаю…', '');
+  try{
+    await reload();
+    gate.classList.add('hidden');
+    appEl.classList.remove('hidden');
+  }catch(e){
+    showGate(e.status === 401 ? 'Сессия устарела' : 'Не удалось загрузить данные',
+      e.status === 401 ? 'Закрой приложение и открой его заново из бота.' : e.message);
+  }
+})();
+</script>
+</body>
+</html>
