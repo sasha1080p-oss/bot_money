@@ -45,7 +45,20 @@ if WEBAPP_URL and not WEBAPP_URL.startswith("https://"):
 INIT_DATA_MAX_AGE = 7 * 24 * 3600  # сколько секунд подпись Telegram считается свежей
 
 BASE_DIR = Path(__file__).resolve().parent
-INDEX_HTML = BASE_DIR / "webapp" / "index.html"
+# index.html ищется в нескольких местах: в папке webapp (основной вариант) или рядом с ботом
+INDEX_CANDIDATES = [
+    BASE_DIR / "webapp" / "index.html",
+    BASE_DIR / "index.html",
+    Path.cwd() / "webapp" / "index.html",
+    Path.cwd() / "index.html",
+]
+
+
+def find_index():
+    for path in INDEX_CANDIDATES:
+        if path.is_file():
+            return path
+    return None
 
 DEFAULT_STAGES = [100_000, 500_000, 1_000_000]
 DEFAULT_CURRENCY = "AMD"
@@ -481,9 +494,10 @@ def _want_id(request) -> int:
 
 
 async def index(request: web.Request):
-    if not INDEX_HTML.exists():
-        return web.Response(status=500, text="Нет файла webapp/index.html — загрузи папку webapp в репозиторий")
-    return web.FileResponse(INDEX_HTML, headers={"Cache-Control": "no-cache"})
+    path = find_index()
+    if path is None:
+        return web.Response(status=500, text="Нет файла index.html — загрузи папку webapp в репозиторий")
+    return web.FileResponse(path, headers={"Cache-Control": "no-cache, no-store, must-revalidate"})
 
 
 async def health(request: web.Request):
@@ -556,8 +570,13 @@ async def main():
     if not BOT_TOKEN:
         raise SystemExit("BOT_TOKEN не задан — добавь его в переменные окружения")
     init_db()
-    if not INDEX_HTML.exists():
-        log.error("Нет файла %s — Mini App не откроется. Загрузи папку webapp в репозиторий.", INDEX_HTML)
+    found = find_index()
+    if found:
+        log.info("Mini App файл: %s", found)
+    else:
+        # подробности для диагностики: что реально лежит рядом с ботом
+        log.error("Нет файла index.html. Искал: %s", ", ".join(str(p) for p in INDEX_CANDIDATES))
+        log.error("Содержимое %s: %s", BASE_DIR, sorted(x.name for x in BASE_DIR.iterdir()))
 
     runner = web.AppRunner(build_app())
     await runner.setup()
